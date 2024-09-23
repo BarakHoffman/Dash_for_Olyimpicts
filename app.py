@@ -96,101 +96,114 @@ def create_dash_app():
         ], style={'padding': '20px'})
     ], style={'padding': '20px', 'maxWidth': '1400px', 'margin': 'auto'})
 
-    # Define the callback to update the graph
     @app.callback(
-        Output('3d-scatter-plot', 'figure'),
-        [Input('sport-dropdown', 'value'),
-         Input('medal-checklist', 'value'),
-         Input('show-bounding-box', 'value')]
+    Output('3d-scatter-plot', 'figure'),
+    [Input('sport-dropdown', 'value'),
+     Input('medal-checklist', 'value'),
+     Input('show-bounding-box', 'value')]
+)
+def update_graph(selected_sport, selected_medals, show_bounding_box):
+    # Filter the DataFrame for the selected sport and sex (Male)
+    sport_df = df[(df['Sport'] == selected_sport) & (df['Sex'] == 'M')]
+    
+    # Filter for selected medals (this won't affect the stats calculation)
+    filtered_df = sport_df[sport_df['Medal'].isin(selected_medals)]
+
+    # Create the 3D scatter plot
+    fig = px.scatter_3d(filtered_df,
+                        x='Age',
+                        y='Height',
+                        z='Weight',
+                        color='Medal',
+                        color_discrete_map={'Gold': 'gold', 'Silver': 'silver', 'Bronze': '#cd7f32', 'N': 'blue'},
+                        hover_name='Name',
+                        hover_data=['Year'],
+                        title=f'Age, Height, and Weight Distribution for {selected_sport} (Male)')
+
+    # Set fixed axis ranges based on max values for the selected sport
+    fig.update_layout(
+        scene=dict(
+            xaxis_title='Age',
+            yaxis_title='Height',
+            zaxis_title='Weight',
+            xaxis=dict(range=[0, max_values[selected_sport]['Age']]),
+            yaxis=dict(range=[0, max_values[selected_sport]['Height']]),
+            zaxis=dict(range=[0, max_values[selected_sport]['Weight']])
+        ),
+        legend_title='Medal',
+        margin=dict(l=0, r=0, b=0, t=40),
+        height=700,
+        uirevision='constant'  # This will keep the camera angle constant
     )
-    def update_graph(selected_sport, selected_medals, show_bounding_box):
-        # Filter the DataFrame for the selected sport and sex (Male)
-        filtered_df = df[(df['Sport'] == selected_sport) & (df['Sex'] == 'M')]
 
-        # Filter for selected medals
-        filtered_df = filtered_df[filtered_df['Medal'].isin(selected_medals)]
+    # Add bounding box if checkbox is selected
+    if show_bounding_box and bounding_boxes[selected_sport] is not None:
+        box = bounding_boxes[selected_sport]
+        x_min, y_min, z_min = box['min_bounds_original']
+        x_max, y_max, z_max = box['max_bounds_original']
 
-        # Create the 3D scatter plot
-        fig = px.scatter_3d(filtered_df,
-                            x='Age',
-                            y='Height',
-                            z='Weight',
-                            color='Medal',
-                            color_discrete_map={'Gold': 'gold', 'Silver': 'silver', 'Bronze': '#cd7f32', 'N': 'blue'},
-                            hover_name='Name',
-                            hover_data=['Year'],
-                            title=f'Age, Height, and Weight Distribution for {selected_sport} (Male)')
+        # Create cube
+        cube = go.Mesh3d(
+            x=[x_min, x_max, x_max, x_min, x_min, x_max, x_max, x_min],
+            y=[y_min, y_min, y_max, y_max, y_min, y_min, y_max, y_max],
+            z=[z_min, z_min, z_min, z_min, z_max, z_max, z_max, z_max],
+            i=[7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
+            j=[3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
+            k=[0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+            color='rgba(255, 0, 0, 0.2)',  # Semi-transparent red
+            opacity=0.6,
+            name='Bounding Box'
+        )
+        fig.add_trace(cube)
 
-        # Set fixed axis ranges based on max values for the selected sport
-        fig.update_layout(
-            scene=dict(
-                xaxis_title='Age',
-                yaxis_title='Height',
-                zaxis_title='Weight',
-                xaxis=dict(range=[0, max_values[selected_sport]['Age']]),
-                yaxis=dict(range=[0, max_values[selected_sport]['Height']]),
-                zaxis=dict(range=[0, max_values[selected_sport]['Weight']])
-            ),
-            legend_title='Medal',
-            margin=dict(l=0, r=0, b=0, t=40),
-            height=700
+        # Calculate total sample size using the full sport dataset
+        total_sample_size = len(sport_df)
+        
+        # Calculate the number of athletes in the box using the full sport dataset
+        athletes_in_box = sport_df[
+            (sport_df['Age'] >= x_min) & (sport_df['Age'] <= x_max) &
+            (sport_df['Height'] >= y_min) & (sport_df['Height'] <= y_max) &
+            (sport_df['Weight'] >= z_min) & (sport_df['Weight'] <= z_max)
+        ]
+        box_sample_size = len(athletes_in_box)
+
+        # Calculate medal probability in the box
+        medal_prob_in_box = athletes_in_box['Medal'].isin(['Gold', 'Silver', 'Bronze']).mean()
+
+        # Calculate overall medal probability
+        overall_medal_prob = sport_df['Medal'].isin(['Gold', 'Silver', 'Bronze']).mean()
+
+        # Create stats text
+        stats_text = (
+            f"Bounding Box Statistics:<br>"
+            f"Age: {x_min:.1f} - {x_max:.1f} years<br>"
+            f"Height: {y_min:.1f} - {y_max:.1f} cm<br>"
+            f"Weight: {z_min:.1f} - {z_max:.1f} kg<br>"
+            f"Sample size in box: {box_sample_size}<br>"
+            f"Total Population size: {total_sample_size}<br>"
+            f"% in box: {(box_sample_size / total_sample_size) * 100:.1f}%<br>"
+            f"Medal Prob in Box: {medal_prob_in_box:.2%}<br>"
+            f"Overall Medal Prob: {overall_medal_prob:.2%}<br>"
+            f"Improvement: {(medal_prob_in_box / overall_medal_prob if overall_medal_prob > 0 else 0):.2f}x"
         )
 
-        # Add bounding box if checkbox is selected
-        if show_bounding_box and bounding_boxes[selected_sport] is not None:
-            box = bounding_boxes[selected_sport]
-            x_min, y_min, z_min = box['min_bounds_original']
-            x_max, y_max, z_max = box['max_bounds_original']
+        # Add annotation for bounding box statistics
+        fig.add_annotation(
+            x=0.05,  # Relative x-position on the plot
+            y=0.95,  # Relative y-position on the plot
+            xref="paper",
+            yref="paper",
+            text=stats_text,
+            showarrow=False,
+            font=dict(size=14),
+            align="left",
+            bgcolor="rgba(255, 255, 255, 0.8)",
+            bordercolor="red",
+            borderwidth=2,
+            borderpad=4
+        )
 
-            # Create cube
-            cube = go.Mesh3d(
-                x=[x_min, x_max, x_max, x_min, x_min, x_max, x_max, x_min],
-                y=[y_min, y_min, y_max, y_max, y_min, y_min, y_max, y_max],
-                z=[z_min, z_min, z_min, z_min, z_max, z_max, z_max, z_max],
-                i=[7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
-                j=[3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
-                k=[0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
-                color='rgba(255, 0, 0, 0.2)',  # Semi-transparent red
-                opacity=0.6,
-                name='Bounding Box'
-            )
-            fig.add_trace(cube)
-
-            # Calculate total sample size
-            total_sample_size = len(filtered_df)
-
-            # Create stats text
-            stats_text = (
-                f"Bounding Box Statistics:<br>"
-                f"Age: {x_min:.1f} - {x_max:.1f} years<br>"
-                f"Height: {y_min:.1f} - {y_max:.1f} cm<br>"
-                f"Weight: {z_min:.1f} - {z_max:.1f} kg<br>"
-                f"Sample size in box: {box['size']}<br>"
-                f"Total Population size: {total_sample_size}<br>"
-                f"% in box: {(box['size'] / total_sample_size) * 100:.1f}%<br>"
-                f"Medal Prob in Box: {box['medal_prob']:.2%}<br>"
-                f"Overall Medal Prob: {overall_medal_prob:.2%}<br>"
-                f"Improvement: {box['improvement']:.2f}x"
-            )
-
-            # Add annotation for bounding box statistics
-            fig.add_annotation(
-                x=0.05,  # Relative x-position on the plot
-                y=0.95,  # Relative y-position on the plot
-                xref="paper",
-                yref="paper",
-                text=stats_text,
-                showarrow=False,
-                font=dict(size=14),
-                align="left",
-                bgcolor="rgba(255, 255, 255, 0.8)",
-                bordercolor="red",
-                borderwidth=2,
-                borderpad=4
-            )
-
-        return fig
-
+    return fig
     return app
 
 # Create the Dash app
