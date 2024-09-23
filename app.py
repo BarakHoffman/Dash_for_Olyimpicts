@@ -181,7 +181,7 @@ def create_dash_app():
                 yref="paper",
                 text=stats_text,
                 showarrow=False,
-                font=dict(size=12),
+                font=dict(size=14),
                 align="left",
                 bgcolor="rgba(255, 255, 255, 0.8)",
                 bordercolor="red",
