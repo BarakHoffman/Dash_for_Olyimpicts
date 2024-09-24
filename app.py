@@ -105,7 +105,7 @@ def create_dash_app():
     def update_graph(selected_sport, selected_medals, show_bounding_box):
         # Filter the DataFrame for the selected sport and sex (Male)
         sport_df = df[(df['Sport'] == selected_sport) & (df['Sex'] == 'M')]
-        
+        total_sample_size = len(sport_df)
         # Filter for selected medals (this won't affect the stats calculation)
         filtered_df = sport_df[sport_df['Medal'].isin(selected_medals)]
 
@@ -156,35 +156,21 @@ def create_dash_app():
             )
             fig.add_trace(cube)
 
-            # Calculate total sample size using the full sport dataset
-            total_sample_size = len(sport_df)
             
-            # Calculate the number of athletes in the box using the full sport dataset
-            athletes_in_box = sport_df[
-                (sport_df['Age'] >= x_min) & (sport_df['Age'] <= x_max) &
-                (sport_df['Height'] >= y_min) & (sport_df['Height'] <= y_max) &
-                (sport_df['Weight'] >= z_min) & (sport_df['Weight'] <= z_max)
-            ]
-            box_sample_size = len(athletes_in_box)
-
-            # Calculate medal probability in the box
-            medal_prob_in_box = athletes_in_box['Medal'].isin(['Gold', 'Silver', 'Bronze']).mean()
-
-            # Calculate overall medal probability
-            overall_medal_prob = sport_df['Medal'].isin(['Gold', 'Silver', 'Bronze']).mean()
+            
 
             # Create stats text
             stats_text = (
-                f"Bounding Box Statistics:<br>"
-                f"Age: {x_min:.1f} - {x_max:.1f} years<br>"
-                f"Height: {y_min:.1f} - {y_max:.1f} cm<br>"
-                f"Weight: {z_min:.1f} - {z_max:.1f} kg<br>"
-                f"Sample size in box: {box_sample_size}<br>"
-                f"Total Population size: {total_sample_size}<br>"
-                f"% in box: {(box_sample_size / total_sample_size) * 100:.1f}%<br>"
-                f"Medal Prob in Box: {medal_prob_in_box:.2%}<br>"
-                f"Overall Medal Prob: {overall_medal_prob:.2%}<br>"
-                f"Improvement: {(medal_prob_in_box / overall_medal_prob if overall_medal_prob > 0 else 0):.2f}x"
+             f"Bounding Box Statistics:<br>"
+             f"Age: {x_min:.1f} - {x_max:.1f} years<br>"
+             f"Height: {y_min:.1f} - {y_max:.1f} cm<br>"
+             f"Weight: {z_min:.1f} - {z_max:.1f} kg<br>"
+             f"Sample size in box: {box['size']}<br>"
+             f"Total Population size: {total_sample_size}<br>"
+             f"% in box: {(box['size'] / total_sample_size) * 100:.1f}%<br>"
+             f"Medal Prob in Box: {box['medal_prob']:.2%}<br>"
+             f"Overall Medal Prob: {overall_medal_prob:.2%}<br>"
+             f"Improvement: {box['improvement']:.2f}x"
             )
 
             # Add annotation for bounding box statistics
