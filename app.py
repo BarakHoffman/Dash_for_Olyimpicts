@@ -39,14 +39,20 @@ with open('bounding_boxes_data.json', 'r') as f:
     data = json.load(f)
 
 # Extract the bounding boxes and max values
-max_values = data['max_values']
+max_values = {}
 bounding_boxes = {}
 sports = ['Gymnastics', 'Swimming', 'Athletics', 'Shooting', 'Sailing', 'Fencing', 'Rowing', 'Boxing', 'Equestrianism',
           'Weightlifting', 'Cycling', 'Diving', 'Basketball', 'Football', 'Wrestling']
 
 for sport in sports:
     if sport in data['bounding_boxes']:
+        sport_df = df[(df['Sport'] == sport) & (df['Sex'] == 'M')]
         bounding_boxes[sport] = data['bounding_boxes'][sport]
+        max_values[sport] = {
+        'Age': sport_df['Age'].max(),
+        'Height': sport_df['Height'].max(),
+        'Weight': sport_df['Weight'].max()
+         }
 
 def create_dash_app():
     # Initialize the Dash app
@@ -136,8 +142,11 @@ def create_dash_app():
         # Add bounding box if checkbox is selected
         if show_bounding_box and 'show' in show_bounding_box and bounding_boxes[selected_sport]['box'] is not None:
             box = bounding_boxes[selected_sport]['box']
-            x_min, y_min, z_min = box['min_bounds_original']
-            x_max, y_max, z_max = box['max_bounds_original']
+            overall_medal_prob = bounding_boxes[selected_sport]['overall_medal_prob']
+            total_sample_size = bounding_boxes[selected_sport]['total_athletes']
+           if box['improvement'] > 1:  # Only show box if there's an improvement
+               x_min, y_min, z_min = box['min_bounds_original']
+               x_max, y_max, z_max = box['max_bounds_original']
 
             # Create cube
             cube = go.Mesh3d(
@@ -160,8 +169,8 @@ def create_dash_app():
              f"Height: {y_min:.1f} - {y_max:.1f} cm<br>"
              f"Weight: {z_min:.1f} - {z_max:.1f} kg<br>"
              f"Sample size in box: {box['size']}<br>"
-             f"Total Population size: {bounding_boxes[selected_sport]['total_athletes']}<br>"
-             f"% in box: {(box['size'] / bounding_boxes[selected_sport]['total_athletes']) * 100:.1f}%<br>"
+             f"Total Population size: {total_sample_size}<br>"
+             f"% in box: {(box['size'] / total_sample_size) * 100:.1f}%<br>"
              f"Medal Prob in Box: {box['medal_prob']:.2%}<br>"
              f"Overall Medal Prob: {bounding_boxes[selected_sport]['overall_medal_prob']:.2%}<br>"
              f"Improvement: {box['improvement']:.2f}x"
