@@ -46,9 +46,7 @@ sports = ['Gymnastics', 'Swimming', 'Athletics', 'Shooting', 'Sailing', 'Fencing
 
 for sport in sports:
     if sport in data['bounding_boxes']:
-        bounding_boxes[sport] = data['bounding_boxes'][sport]['best_box']
-        overall_medal_prob = data['bounding_boxes'][sport]['overall_medal_prob']
-        total_athletes = data['bounding_boxes'][sport]['total_athletes']
+        bounding_boxes[sport] = data['bounding_boxes'][sport]
 
 def create_dash_app():
     # Initialize the Dash app
@@ -105,8 +103,7 @@ def create_dash_app():
     def update_graph(selected_sport, selected_medals, show_bounding_box):
         # Filter the DataFrame for the selected sport and sex (Male)
         sport_df = df[(df['Sport'] == selected_sport) & (df['Sex'] == 'M')]
-        total_sample_size = len(sport_df)
-        # Filter for selected medals (this won't affect the stats calculation)
+        # Filter for selected medals
         filtered_df = sport_df[sport_df['Medal'].isin(selected_medals)]
 
         # Create the 3D scatter plot
@@ -137,8 +134,8 @@ def create_dash_app():
         )
 
         # Add bounding box if checkbox is selected
-        if show_bounding_box and 'show' in show_bounding_box and bounding_boxes[selected_sport] is not None:
-            box = bounding_boxes[selected_sport]
+        if show_bounding_box and 'show' in show_bounding_box and bounding_boxes[selected_sport]['box'] is not None:
+            box = bounding_boxes[selected_sport]['box']
             x_min, y_min, z_min = box['min_bounds_original']
             x_max, y_max, z_max = box['max_bounds_original']
 
@@ -156,9 +153,6 @@ def create_dash_app():
             )
             fig.add_trace(cube)
 
-            
-            
-
             # Create stats text
             stats_text = (
              f"Bounding Box Statistics:<br>"
@@ -166,10 +160,10 @@ def create_dash_app():
              f"Height: {y_min:.1f} - {y_max:.1f} cm<br>"
              f"Weight: {z_min:.1f} - {z_max:.1f} kg<br>"
              f"Sample size in box: {box['size']}<br>"
-             f"Total Population size: {total_sample_size}<br>"
-             f"% in box: {(box['size'] / total_sample_size) * 100:.1f}%<br>"
+             f"Total Population size: {bounding_boxes[selected_sport]['total_athletes']}<br>"
+             f"% in box: {(box['size'] / bounding_boxes[selected_sport]['total_athletes']) * 100:.1f}%<br>"
              f"Medal Prob in Box: {box['medal_prob']:.2%}<br>"
-             f"Overall Medal Prob: {overall_medal_prob:.2%}<br>"
+             f"Overall Medal Prob: {bounding_boxes[selected_sport]['overall_medal_prob']:.2%}<br>"
              f"Improvement: {box['improvement']:.2f}x"
             )
 
