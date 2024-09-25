@@ -39,20 +39,14 @@ with open('bounding_boxes_data.json', 'r') as f:
     data = json.load(f)
 
 # Extract the bounding boxes and max values
-max_values = {}
+max_values = data['max_values']
 bounding_boxes = {}
 sports = ['Gymnastics', 'Swimming', 'Athletics', 'Shooting', 'Sailing', 'Fencing', 'Rowing', 'Boxing', 'Equestrianism',
           'Weightlifting', 'Cycling', 'Diving', 'Basketball', 'Football', 'Wrestling']
 
 for sport in sports:
     if sport in data['bounding_boxes']:
-        sport_df = df[(df['Sport'] == sport) & (df['Sex'] == 'M')]
         bounding_boxes[sport] = data['bounding_boxes'][sport]
-        max_values[sport] = {
-        'Age': sport_df['Age'].max(),
-        'Height': sport_df['Height'].max(),
-        'Weight': sport_df['Weight'].max()
-         }
 
 def create_dash_app():
     # Initialize the Dash app
@@ -142,62 +136,64 @@ def create_dash_app():
         # Add bounding box if checkbox is selected
         if show_bounding_box and 'show' in show_bounding_box and bounding_boxes[selected_sport]['box'] is not None:
             box = bounding_boxes[selected_sport]['box']
-            overall_medal_prob = bounding_boxes[selected_sport]['overall_medal_prob']
-            total_sample_size = bounding_boxes[selected_sport]['total_athletes']
-            
-            if box['improvement'] > 1:  # Only show box if there's an improvement
-                x_min, y_min, z_min = box['min_bounds_original']
-                x_max, y_max, z_max = box['max_bounds_original']
+            x_min, y_min, z_min = box['min_bounds_original']
+            x_max, y_max, z_max = box['max_bounds_original']
 
-                # Create cube
-                cube = go.Mesh3d(
-                    x=[x_min, x_max, x_max, x_min, x_min, x_max, x_max, x_min],
-                    y=[y_min, y_min, y_max, y_max, y_min, y_min, y_max, y_max],
-                    z=[z_min, z_min, z_min, z_min, z_max, z_max, z_max, z_max],
-                    i=[7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
-                    j=[3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
-                    k=[0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
-                    color='rgba(255, 0, 0, 0.2)',  # Semi-transparent red
-                    opacity=0.6,
-                    name='Bounding Box'
-                )
-                fig.add_trace(cube)
+            # Create cube
+            cube = go.Mesh3d(
+                x=[x_min, x_max, x_max, x_min, x_min, x_max, x_max, x_min],
+                y=[y_min, y_min, y_max, y_max, y_min, y_min, y_max, y_max],
+                z=[z_min, z_min, z_min, z_min, z_max, z_max, z_max, z_max],
+                i=[7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2],
+                j=[3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3],
+                k=[0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6],
+                color='rgba(255, 0, 0, 0.2)',  # Semi-transparent red
+                opacity=0.6,
+                name='Bounding Box'
+            )
+            fig.add_trace(cube)
 
-                # Create stats text
-                stats_text = (
-                    f"Bounding Box Statistics:<br>"
-                    f"Age: {x_min:.1f} - {x_max:.1f} years<br>"
-                    f"Height: {y_min:.1f} - {y_max:.1f} cm<br>"
-                    f"Weight: {z_min:.1f} - {z_max:.1f} kg<br>"
-                    f"Sample size in box: {box['size']}<br>"
-                    f"Total Population size: {total_sample_size}<br>"
-                    f"% in box: {(box['size'] / total_sample_size) * 100:.1f}%<br>"
-                    f"Medal Prob in Box: {box['medal_prob']:.2%}<br>"
-                    f"Overall Medal Prob: {bounding_boxes[selected_sport]['overall_medal_prob']:.2%}<br>"
-                    f"Improvement: {box['improvement']:.2f}x"
-                )
+            # Create stats text
+            stats_text = (
+             f"Bounding Box Statistics:<br>"
+             f"Age: {x_min:.1f} - {x_max:.1f} years<br>"
+             f"Height: {y_min:.1f} - {y_max:.1f} cm<br>"
+             f"Weight: {z_min:.1f} - {z_max:.1f} kg<br>"
+             f"Sample size in box: {box['size']}<br>"
+             f"Total Population size: {bounding_boxes[selected_sport]['total_athletes']}<br>"
+             f"% in box: {(box['size'] / bounding_boxes[selected_sport]['total_athletes']) * 100:.1f}%<br>"
+             f"Medal Prob in Box: {box['medal_prob']:.2%}<br>"
+             f"Overall Medal Prob: {bounding_boxes[selected_sport]['overall_medal_prob']:.2%}<br>"
+             f"Improvement: {box['improvement']:.2f}x"
+            )
 
-                # Add annotation for bounding box statistics
-                fig.add_annotation(
-                    x=0.05,  # Relative x-position on the plot
-                    y=0.95,  # Relative y-position on the plot
-                    xref="paper",
-                    yref="paper",
-                    text=stats_text,
-                    showarrow=False,
-                    font=dict(size=14),
-                    align="left",
-                    bgcolor="rgba(255, 255, 255, 0.8)",
-                    bordercolor="red",
-                    borderwidth=2,
-                    borderpad=4
-                )
+            # Add annotation for bounding box statistics
+            fig.add_annotation(
+                x=0.05,  # Relative x-position on the plot
+                y=0.95,  # Relative y-position on the plot
+                xref="paper",
+                yref="paper",
+                text=stats_text,
+                showarrow=False,
+                font=dict(size=14),
+                align="left",
+                bgcolor="rgba(255, 255, 255, 0.8)",
+                bordercolor="red",
+                borderwidth=2,
+                borderpad=4
+            )
 
         return fig
 
     return app
 
+# Create the Dash app
+app = create_dash_app()
+
+# Get the Flask server
+server = app.server
+
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8085))
-    app = create_dash_app()
+    # Get port from environment variable or use 8050 as default
+    port = int(os.environ.get('PORT', 8050))
     app.run_server(host='0.0.0.0', port=port)
